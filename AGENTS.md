@@ -1,6 +1,7 @@
 # DBOSS — development contract
 
 - Source of truth: https://github.com/pastrello/pg-dboss
+- Canonical operator instructions: README.md. Before documenting a CLI command, verify the actual argparse/installer implementation. Keep usage concise but complete; avoid contradictory duplicate runbooks.
 - Scope: DBOS Linux/ZFS observability + PG Intelligence continuous telemetry; exactly ONE scheduled SQL poller (PGIntel scheduler with optional DBOSS host callback).
 - PostgreSQL 18 is the required baseline for **new** DBOS intelligence; PGIntel monitoring compatibility with PostgreSQL 13–18 is legacy and must not be broken.
 - Preserve current 'pgintel' CLI, installer, service paths, configuration, telemetry schema, and migrated data until a separate verified migration has a rollback plan.
