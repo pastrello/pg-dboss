@@ -1,77 +1,67 @@
 # DBOSS — Database Optimized Operating System
 
-Experimental unified project combining PostgreSQL 18 / Linux / OpenZFS
-observability (DBOS 0.2.1) and continuous telemetry/historical analysis
-(PG Intelligence 0.1.8).
+One observability tool for PostgreSQL, Linux and OpenZFS, consolidating
+DBOS Intelligence 0.2.1 and PG Intelligence 0.1.8.
 
-**No monitored database or ZFS tuning is applied automatically.**
+**One scheduled SQL collector, no duplicate PostgreSQL polling.**
+The production-tested PGIntel scheduler remains the authoritative telemetry
+engine. DBOSS adds Linux/ZFS snapshots on the same schedule via a hook.
 
-## Components
-- `dbos/`: original DBOS 0.2.1 snapshots, PG18 stats and offline delta analysis.
-- `pgintel/`: preserved PG Intelligence 0.1.8 source, SQL migrations,
-  compatible monitor for PG13–18 and historical telemetry repository.
-- `dboss/`: unified CLI dispatcher.
-- `crates/dboss-agent/`: optional read-only Linux/ZFS prototype in Rust.
-
-## Rocky Linux 8/9/10 — setup and tests (recommended)
+## Install and offline tests
 
 ```bash
-git clone -b feature/dboss-consolidation https://github.com/pastrello/pg-dboss.git
+git clone https://github.com/pastrello/pg-dboss.git
 cd pg-dboss
 ./install.sh
-.venv/bin/dboss --version
-.venv/bin/dboss host --output host.json
+.venv/bin/dboss --help
 ```
 
-Running `./install.sh` creates a **local** Python virtual environment,
-installs package dependencies and runs offline unit tests; it requires
-internet package access on first use. No root, PostgreSQL object change or
-service enablement is needed. Python >=3.9 is required.
-`DBOSS_PYTHON=python3.12 ./install.sh` selects the interpreter.
-
-Additional commands:
-
-```bash
-./install.sh --self-test
-./install.sh --doctor
-sudo ./install.sh --install
-/opt/dboss/venv/bin/dboss --help
-```
-
-`--install` creates an **isolated DBOSS** environment under /opt/dboss
-and **does not replace** the older /opt/pg-intelligence installation or
-`pgintel.service`. The original PG Intelligence installer
-`install-rocky.sh` is retained for compatibility; opt-in setup:
-`sudo ./install.sh --legacy-configure`. It can create PG Intelligence's
-monitoring/repository objects, so read its safety documentation first.
+`./install.sh` creates the local virtualenv and runs offline tests.
+Use `./install.sh --doctor` and `./install.sh --self-test` for diagnostics.
+The explicit `sudo ./install.sh --install` installs the isolated DBOSS CLI
+under `/opt/dboss` without changing the old PGIntel service.
+`sudo ./install.sh --legacy-configure` invokes the historical PGIntel
+bootstrap **only when intentionally requested**.
 
 ## Unified commands
 
 ```bash
-.venv/bin/dboss host --output host.json
-.venv/bin/dboss postgres --output postgres.json
-.venv/bin/dboss probe --output sample.json
-.venv/bin/dboss analyze --before a.json --after b.json --output interval.json
-.venv/bin/dboss monitor -c /etc/pgintel/pgintel.ini check
-.venv/bin/dboss monitor -c /etc/pgintel/pgintel.ini health --hours 24
+# Config uses the existing /etc/pgintel/pgintel.ini format.
+# The application DB is observed read-only; PGIntel repository gets writes.
+dboss collect -c /etc/pgintel/pgintel.ini --host-dir ~/.local/state/dboss/host
+
+# A single continuous process; PGIntel runs SQL, DBOSS adds host/ZFS
+# every 300 seconds (and keeps up to 288 private JSON files).
+dboss run -c /etc/pgintel/pgintel.ini --host-interval 300
+
+# Ad-hoc DBOS PG18-only diagnostics (never scheduled by dboss run):
+dboss host --output host.json
+dboss probe --output sample.json
+dboss analyze --before sample-a.json --after sample-b.json
+
+# Existing PGIntel maintenance commands remain reachable:
+dboss monitor -c /etc/pgintel/pgintel.ini report --hours 24
+pgintel -c /etc/pgintel/pgintel.ini health --hours 24
 ```
 
-The `dbos` and `pgintel` CLIs remain available.
-DBOS PostgreSQL collection uses libpq's PGSERVICE/PGPASSFILE mechanisms
-and requires PostgreSQL 18. PG Intelligence retains PG13–18 compatibility.
+**Never run the old `pgintel` daemon and `dboss run` together** against
+the same configured instance: that would cause redundant SQL sampling.
+No systemd service is enabled or replaced automatically.
 
-## Development, safety and licensing
-- [Architecture](docs/ARCHITECTURE.md)
-- [Project state](docs/PROJECT-STATE.md)
-- [Rust evaluation](docs/RUST-STRATEGY.md)
-- [Original PG Intelligence README](docs/PG-INTELLIGENCE-ORIGINAL.md)
-- [ADR-001 unification](docs/decisions/ADR-001-unification.md)
+The host-history directory must be owned by the executing user and be
+private (mode 0700). Each JSON report is created mode 0600. It may expose
+internal mounts and should not be committed or uploaded unredacted.
 
-Release gate: successful CI plus PG18/ZFS validation on Rocky; no automatic
-kernel/ARC/prewarm/DDL changes.
+## Architecture / support
 
-For compatibility with the existing PG Intelligence installer/tests, the
-Python distribution metadata remains `pg-intelligence==0.1.8` during
-transition. Product CLI uses `dboss 0.1.0`.
-The original PG Intelligence source has no explicit LICENSE in the inspected
-repository: resolve legal provenance before wider redistribution.
+- PGIntel FAST/SLOW/SIZE, repository SQL/schema, `pgintel` CLI, and legacy
+  installation stay operational on PostgreSQL 13–18.
+- DBOS PG18 collectors remain for explicit diagnosis and offline deltas,
+  not for a competing second SQL monitoring daemon.
+- Rust host agent in `crates/dboss-agent` stays a research experiment,
+  not an active second collector. Replace Python only after measured parity.
+- No automatic `pg_prewarm`, cache policy, index changes or ZFS tuning.
+
+See `docs/ARCHITECTURE.md`, `docs/PROJECT-STATE.md`,
+`docs/RUST-STRATEGY.md`, `AGENTS.md` and
+`docs/PG-INTELLIGENCE-ORIGINAL.md` (original README archived).

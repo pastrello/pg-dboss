@@ -291,7 +291,8 @@ def collect_once(
         }
 
 
-def run_forever(cfg: AgentConfig) -> None:
+def run_forever(cfg: AgentConfig, *, on_cycle: Callable[[dict | None], None] | None = None) -> None:
+    """Run legacy PG telemetry once per cycle; optional DBOSS host hook never queries PostgreSQL."""
     LOG.info(
         "Starting PG Intelligence agent for %s; fast=%ss slow=%ss sizes=%ss budget=%.1fs text=%s",
         cfg.instance_name,
@@ -304,6 +305,7 @@ def run_forever(cfg: AgentConfig) -> None:
     last_slow = time.monotonic()
     last_size = last_slow
     while True:
+        result = None
         started = time.monotonic()
         now = started
         slow_due = (now - last_slow) >= cfg.slow_interval_seconds
@@ -324,6 +326,11 @@ def run_forever(cfg: AgentConfig) -> None:
         except Exception:
             LOG.exception("Collection cycle failed")
         finally:
+            if on_cycle is not None:
+                try:
+                    on_cycle(result)
+                except Exception:
+                    LOG.exception("Optional DBOSS host observation failed; PostgreSQL collection continues")
             # A due slow/size cycle is not retried every minute if it was skipped
             # because the source budget was exceeded. This is intentionally conservative.
             if slow_due:
