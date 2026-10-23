@@ -10,6 +10,7 @@ Usage:
   dboss collect -c /etc/pgintel/pgintel.ini [--full] [--host-dir DIR]
   dboss run -c /etc/pgintel/pgintel.ini [--host-dir DIR] [--host-interval 300]
   dboss advise --interval interval.json [--output advice.json]  # offline
+  dboss review --advice advice.json [--limit 10]  # readable offline report
   dboss host|postgres|probe|inspect|analyze [options]  # on-demand DBOS PG18 analysis
   dboss monitor -c /etc/pgintel/pgintel.ini <command> [options]  # legacy operations
 
@@ -28,6 +29,9 @@ def main(argv: list[str] | None = None) -> int:
     if args[0] in ("--version", "-V"):
         print(f"dboss {__version__} (DBOS 0.2.1 + PG Intelligence 0.1.8)")
         return 0
+    if args[0] == "review":
+        from .review import main as review_main
+        return review_main(args[1:])
     if args[0] == "advise":
         from .advisor import main as advisor_main
         return advisor_main(args[1:])

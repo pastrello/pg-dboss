@@ -1,55 +1,54 @@
 # DBOSS — Project State
 
-Updated: 2026-10-23
+Atualizado: 2026-10-23
 
-## Source of truth
+## Fonte oficial
+- GitHub: https://github.com/pastrello/pg-dboss
+- `main`: PR #5 (base DBOS/PGIntel), PR #6 (um SQL scheduler) e
+  PR #7 (Smart Cache Advisor offline) já incorporados.
+- Alteração deste ciclo: README de operação e visualização textual
+  de `advice.json` via `dboss review`.
 
-- Repository: https://github.com/pastrello/pg-dboss
-- Main: PR #5 merged (DBOS 0.2.1 + PG Intelligence 0.1.8).
-- This change: unified observer on `feature/dboss-unified-observer`.
+## Implementado
+- `install.sh` único para preparação local, testes, diagnóstico e instalação
+  isolada; nenhum serviço é iniciado automaticamente.
+- `dboss host/postgres/probe/inspect/analyze`: coletas pontuais DBOS PG18
+  e comparação offline; saída JSON sem sobrescrita.
+- `dboss collect/run`: PGIntel como **único** coletor SQL periódico,
+  repositório de telemetria separado e observação Linux/ZFS no mesmo processo.
+- Histórico local host em JSON privado (0700 dir, 0600 arquivo), retenção
+  limitada, 300s padrão.
+- `dboss advise`: heurísticas offline para intervalos PG18, nunca tuning.
+- `dboss review --advice advice.json`: resumo legível offline.
+- CLI/config/serviço/migrações legados do PG Intelligence continuam
+  compatíveis; suporte de monitoramento PG13–18 preservado.
+- Rust é protótipo host separado, sem instalação automática.
 
-## What works
+## Evidências recentes (laboratório, não benchmark)
+- `advice.json` fornecido pelo usuário: DBOSS 0.1.0, banco `erp`,
+  um intervalo, origem não verificada, confiança `exploratory`.
+- 20 candidatos mostrados: 10 `investigate`, 4 `non_scan_activity`,
+  6 `observe`. Destaques: `pendfin`, `movprodc` e índice
+  `rcnf_idnfe_tipodcto_idx`.
+- Ainda não há evidência para prewarm automático, remoção de índices
+  nem tuning de ARC/kernel. Nenhuma ação no banco modelo autorizada.
 
-- PGIntel scheduler retained: one SQL collection engine with FAST 60s,
-  SLOW 15min and SIZE 60min collection classes (configurable).
-- `dboss run` binds one host/ZFS observer to the existing PGIntel
-  scheduler, default 300s. No extra recurring PostgreSQL queries.
-- `dboss collect`: single PGIntel collection and one host snapshot.
-- Host observations are 0600 JSON in a 0700 local directory, retained
-  up to 288 files. Does not include raw queries or DSNs.
-- `dboss host/postgres/probe/inspect/analyze` continue as explicit
-  on-demand DBOS PG18 diagnostics; `dboss monitor` is compatibility only.
-- Rust host agent is experimental/research-only, never auto-enabled.
-- `install.sh` remains the single entry point for local install/test,
-  doctor, isolated system installation; legacy installer stays opt-in.
-- PGIntel 13–18 source support remains unchanged.
+## Limitações e próximos gates
+- Observações Linux/ARC ainda não estão no repositório SQL de telemetria
+  e não possuem identidade de host/cluster suficientemente verificada.
+- Mais intervalos representativos são necessários; amostra única não
+  determina blocos quentes ou ganho de latência.
+- Nenhuma troca de systemd automática; não executar `pgintel run` e
+  `dboss run` ao mesmo tempo na mesma instância.
+- Testes funcionais Rocky 8/9/10 + PG18 + OpenZFS, custos de coleta de
+  24h e benchmarks Rust/Python continuam pendentes.
+- Não copiar snapshots/dados sensíveis para repositórios públicos.
+- Compatibilidade de distribuição Python permanece `pg-intelligence
+  0.1.8` e CLI DBOSS `0.1.0` até migração aprovada.
 
-## Not implemented / known risks
-
-- DBOSS local host JSON is not yet joined into PGIntel repository tables.
-- No automatic cache tuning or Smart Cache Advisor execution.
-- No auto systemd migration. Existing `pgintel.service` stays intact.
-- Operators **must not** run `pgintel run` and `dboss run` at the same time
-  for the same source/repository instance; both would collect SQL.
-- Test on Rocky 8/9/10 and PG18+ZFS with repository configured before
-  enabling a continuous service. Confirm user/permissions and measured
-  observer overhead. Python-to-Rust transition requires feature parity,
-  benchmarks and rollback; Rust does not yet replace PostgreSQL collector.
-
-## Safety
-
-Do not alter monitored application DB, roles, indexes, PGDATA, PostgreSQL
-configuration, ZFS datasets, system kernel or live systemd services.
-Historical telemetry repository writes still occur when `collect` or
-`run` is invoked. User must explicitly choose these commands.
-
-## Read-only Advisor (experimental)
-
-- `dboss advise --interval interval.json` works entirely offline against
-  existing DBOS analyze JSON, with no additional PostgreSQL queries.
-- Index/relation thresholds are explicit heuristics; no automatic prewarm,
-  DDL or Linux/ZFS modifications. Ratios are PostgreSQL shared-buffer rates.
-- Multiple non-overlapping intervals require `--assume-same-source`
-  because instance identity is NOT verifiable from legacy analyze files.
-- Index sizes, resident block maps, regression impact and latency benefit
-  are not available; output is investigation candidates, not safe tuning.
+## Contrato de segurança
+O banco de aplicação é **somente leitura**. `dboss collect/run` gravam
+no repositório separado de telemetria, além de JSON local de host.
+Sem SQL de alteração ao modelo, pg_prewarm, ALTER SYSTEM, mudanças de
+índices, ZFS, kernel ou serviços. Documentar todo novo procedimento
+no README, evitando comandos não implementados.
