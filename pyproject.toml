@@ -2,12 +2,14 @@
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+# The legacy distribution name/version remain stable during the transition.
+# DBOSS has its own product CLI version (dboss.__version__ = 0.1.0).
 [project]
-name = "pg-dboss"
-version = "0.1.0"
-description = "DBOSS: PostgreSQL 18 intelligence, Linux/OpenZFS monitoring and legacy PG Intelligence"
+name = "pg-intelligence"
+version = "0.1.8"
+description = "DBOSS consolidation: PG Intelligence 0.1.8 + DBOS 0.2.1"
 requires-python = ">=3.9"
-dependencies = ["psycopg[binary]>=3.2,<4"]
+dependencies = ["psycopg[binary]>=3.1,<4"]
 
 [project.scripts]
 dboss = "dboss.cli:main"

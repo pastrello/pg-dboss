@@ -46,7 +46,7 @@ fn main() -> ExitCode {
         usage();
         return ExitCode::SUCCESS;
     }
-    if args.as_slice() != ["--host"] {
+    if args.len() != 1 || args[0] != "--host" {
         eprintln!("Unknown argument (use --host or --help).");
         return ExitCode::from(2);
     }
