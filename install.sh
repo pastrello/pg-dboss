@@ -31,7 +31,7 @@ select_python() {
     return
   fi
   local c
-  for c in python3.12 python3.13 python3.11 python3.10 python3.9 python3; do
+  for c in python python3.12 python3.13 python3.11 python3.10 python3.9 python3; do
     if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then
       printf '%s\n' "$c"
       return
