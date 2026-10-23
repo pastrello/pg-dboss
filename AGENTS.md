@@ -14,3 +14,5 @@
 - Never run pgintel.service and dboss run concurrently for the same instance; no automatic systemd migration.
 - DBOSS collect/run write to the dedicated telemetry repository, while monitored application DB must remain read-only.
 - Before release, run 'bash ./install.sh --self-test', CI, and explicit Linux/PG18/ZFS integration tests.
+
+- `dboss advise` is offline and advisory-only; no cache changes, SQL, or prewarming. Never assume host identity from legacy interval files.

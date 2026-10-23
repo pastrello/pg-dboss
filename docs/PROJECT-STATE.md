@@ -42,3 +42,14 @@ Do not alter monitored application DB, roles, indexes, PGDATA, PostgreSQL
 configuration, ZFS datasets, system kernel or live systemd services.
 Historical telemetry repository writes still occur when `collect` or
 `run` is invoked. User must explicitly choose these commands.
+
+## Read-only Advisor (experimental)
+
+- `dboss advise --interval interval.json` works entirely offline against
+  existing DBOS analyze JSON, with no additional PostgreSQL queries.
+- Index/relation thresholds are explicit heuristics; no automatic prewarm,
+  DDL or Linux/ZFS modifications. Ratios are PostgreSQL shared-buffer rates.
+- Multiple non-overlapping intervals require `--assume-same-source`
+  because instance identity is NOT verifiable from legacy analyze files.
+- Index sizes, resident block maps, regression impact and latency benefit
+  are not available; output is investigation candidates, not safe tuning.

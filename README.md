@@ -65,3 +65,20 @@ internal mounts and should not be committed or uploaded unredacted.
 See `docs/ARCHITECTURE.md`, `docs/PROJECT-STATE.md`,
 `docs/RUST-STRATEGY.md`, `AGENTS.md` and
 `docs/PG-INTELLIGENCE-ORIGINAL.md` (original README archived).
+
+## Smart Cache Advisor (experimental, offline only)
+
+```bash
+dboss advise --interval interval.json --output advice.json
+# For two non-overlapping intervals FROM THE SAME INSTANCE ONLY:
+dboss advise --interval day1.json --interval day2.json \
+  --assume-same-source --output advice-two-days.json
+```
+
+Advisor reads existing `dboss analyze` interval JSON; it does **not**
+query PostgreSQL or perform any prewarm, index removal or cache changes.
+Review flags are rule-based (>=1000 missed shared-buffer blocks plus hit
+ratio below 90%) and preliminary, not proof of physical disk I/O or bad
+PostgreSQL configuration. It has **no object-size or block-residency data**.
+Do not blindly implement its suggestions. The `--assume-same-source` flag
+requires operator verification of instance continuity across intervals.
